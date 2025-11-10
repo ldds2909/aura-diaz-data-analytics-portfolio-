@@ -1,0 +1,969 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "¡Hola,Laura!\n",
+    "\n",
+    "Mi nombre es Tonatiuh Cruz. Me complace revisar tu proyecto hoy.\n",
+    "\n",
+    "Al identificar cualquier error inicialmente, simplemente los destacaré. Te animo a localizar y abordar los problemas de forma independiente como parte de tu preparación para un rol como data-analyst. En un entorno profesional, tu líder de equipo seguiría un enfoque similar. Si encuentras la tarea desafiante, proporcionaré una pista más específica en la próxima iteración.\n",
+    "\n",
+    "Encontrarás mis comentarios a continuación - **por favor no los muevas, modifiques o elimines**.\n",
+    "\n",
+    "Puedes encontrar mis comentarios en cajas verdes, amarillas o rojas como esta:\n",
+    "\n",
+    "<div class=\"alert alert-block alert-success\">\n",
+    "<b>Comentario del revisor</b> <a class=\"tocSkip\"></a>\n",
+    "\n",
+    "Éxito. Todo está hecho correctamente.\n",
+    "</div>\n",
+    "\n",
+    "<div class=\"alert alert-block alert-warning\">\n",
+    "<b>Comentario del revisor</b> <a class=\"tocSkip\"></a>\n",
+    "\n",
+    "Observaciones. Algunas recomendaciones.\n",
+    "</div>\n",
+    "\n",
+    "<div class=\"alert alert-block alert-danger\">\n",
+    "<b>Comentario del revisor</b> <a class=\"tocSkip\"></a>\n",
+    "\n",
+    "Necesita corrección. El bloque requiere algunas correcciones. El trabajo no puede ser aceptado con comentarios en rojo.\n",
+    "</div>\n",
+    "\n",
+    "Puedes responderme utilizando esto:\n",
+    "\n",
+    "<div class=\"alert alert-block alert-info\">"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<div class=\"alert alert-block alert-success\">\n",
+    "<b>Comentario del revisor</b> <a class=\"tocSkip\"></a>\n",
+    "\n",
+    "Hola Laura, excelente trabajo! Tu código es correcto y ordenado. Resumes de muy buena forma los resultados y además tuviste decisiones muy acertadas durante el proyecto, como el filtrado de datos. Solo te dejé una recomendación que puedes aplicar en futuros proyectos, la cual es un uso más frecuente de visualizaciones para explicar tus resultados más importantes, aquellos que consideres que son de suma importancia mostrar a tus jefes o líderes de proyecto. Continúa esforzándote, saludos!\n",
+    "</div>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 1) Cargar datos"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Logs shape: (244126, 4)\n",
+      "Hypotheses shape: (9, 5)\n",
+      "\n",
+      "Primeras columnas de logs:\n",
+      " ['EventName', 'DeviceIDHash', 'EventTimestamp', 'ExpId']\n",
+      "\n",
+      "Primeras columnas de hypotheses:\n",
+      " ['Hypothesis', 'Reach', 'Impact', 'Confidence', 'Effort']\n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "from statsmodels.stats.proportion import proportions_ztest\n",
+    "\n",
+    "# Cargar archivos con separadores correctos (no cambiar estas rutas)\n",
+    "logs = pd.read_csv('/datasets/logs_exp_us.csv', sep='\\t')\n",
+    "hypotheses = pd.read_csv('/datasets/hypotheses_us.csv', sep=';')\n",
+    "\n",
+    "print(\"Logs shape:\", logs.shape)\n",
+    "print(\"Hypotheses shape:\", hypotheses.shape)\n",
+    "print(\"\\nPrimeras columnas de logs:\\n\", logs.columns.tolist())\n",
+    "print(\"\\nPrimeras columnas de hypotheses:\\n\", hypotheses.columns.tolist())\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<div class=\"alert alert-block alert-success\">\n",
+    "<b>Comentario del revisor</b> <a class=\"tocSkip\"></a>\n",
+    "\n",
+    "Muy buen trabajo cargando tanto las librerías necesarias para el proyecto como el dataset con el separador adecuado. Además, la exploración inicial usando los métodos  siempre son muy útiles para detectar inconsistencias en las tablas como una gran cantidad de NA's o tipos de variable ineficientes.\n",
+    "</div>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Paso 2. Preparar los datos para el análisis\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Nulos por columna en logs:\n",
+      "event      0\n",
+      "user_id    0\n",
+      "ts         0\n",
+      "exp        0\n",
+      "dtype: int64\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>event</th>\n",
+       "      <th>user_id</th>\n",
+       "      <th>ts</th>\n",
+       "      <th>exp</th>\n",
+       "      <th>date</th>\n",
+       "      <th>hour</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>MainScreenAppear</td>\n",
+       "      <td>4575588528974610257</td>\n",
+       "      <td>1970-01-01 00:00:01.564029816</td>\n",
+       "      <td>246</td>\n",
+       "      <td>1970-01-01</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>MainScreenAppear</td>\n",
+       "      <td>7416695313311560658</td>\n",
+       "      <td>1970-01-01 00:00:01.564053102</td>\n",
+       "      <td>246</td>\n",
+       "      <td>1970-01-01</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>PaymentScreenSuccessful</td>\n",
+       "      <td>3518123091307005509</td>\n",
+       "      <td>1970-01-01 00:00:01.564054127</td>\n",
+       "      <td>248</td>\n",
+       "      <td>1970-01-01</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>CartScreenAppear</td>\n",
+       "      <td>3518123091307005509</td>\n",
+       "      <td>1970-01-01 00:00:01.564054127</td>\n",
+       "      <td>248</td>\n",
+       "      <td>1970-01-01</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>PaymentScreenSuccessful</td>\n",
+       "      <td>6217807653094995999</td>\n",
+       "      <td>1970-01-01 00:00:01.564055322</td>\n",
+       "      <td>248</td>\n",
+       "      <td>1970-01-01</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                     event              user_id                            ts  \\\n",
+       "0         MainScreenAppear  4575588528974610257 1970-01-01 00:00:01.564029816   \n",
+       "1         MainScreenAppear  7416695313311560658 1970-01-01 00:00:01.564053102   \n",
+       "2  PaymentScreenSuccessful  3518123091307005509 1970-01-01 00:00:01.564054127   \n",
+       "3         CartScreenAppear  3518123091307005509 1970-01-01 00:00:01.564054127   \n",
+       "4  PaymentScreenSuccessful  6217807653094995999 1970-01-01 00:00:01.564055322   \n",
+       "\n",
+       "   exp        date  hour  \n",
+       "0  246  1970-01-01     0  \n",
+       "1  246  1970-01-01     0  \n",
+       "2  248  1970-01-01     0  \n",
+       "3  248  1970-01-01     0  \n",
+       "4  248  1970-01-01     0  "
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "logs = logs.rename(columns={\n",
+    "    'EventName': 'event',\n",
+    "    'DeviceIDHash': 'user_id',\n",
+    "    'EventTimestamp': 'ts',\n",
+    "    'ExpId': 'exp'\n",
+    "})\n",
+    "\n",
+    "logs['ts'] = pd.to_datetime(logs['ts'], errors='coerce')\n",
+    "logs['date'] = logs['ts'].dt.date\n",
+    "logs['hour'] = logs['ts'].dt.hour\n",
+    "\n",
+    "# Ver si hay nulos importantes\n",
+    "print(\"Nulos por columna en logs:\")\n",
+    "print(logs[['event','user_id','ts','exp']].isna().sum())\n",
+    "\n",
+    "# Mostrar primeras filas limpias\n",
+    "display(logs.head(5))\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<div class=\"alert alert-block alert-success\">\n",
+    "<b>Comentario del revisor</b> <a class=\"tocSkip\"></a>\n",
+    "\n",
+    "Muy bien! Transformaste el tipo de algunas variables a uno más adecuado para su manejo, específicamente las variables de fechas, las cuales con su tipo actual tienen mucho más métodos que facilitarán el desarrollo del proyecto. \n",
+    "</div>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Paso 3. Estudiar y comprobar los datos\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Eventos totales: 244,126\n",
+      "Usuarios únicos: 7,551\n",
+      "Fechas del dataset: 1970-01-01 -> 1970-01-01\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>date</th>\n",
+       "      <th>count</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>1970-01-01</td>\n",
+       "      <td>244126</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "         date   count\n",
+       "0  1970-01-01  244126"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "...\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>date</th>\n",
+       "      <th>count</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>1970-01-01</td>\n",
+       "      <td>244126</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "         date   count\n",
+       "0  1970-01-01  244126"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "\n",
+    "# Conteos y usuarios\n",
+    "n_events = len(logs)\n",
+    "n_users = logs['user_id'].nunique()\n",
+    "print(f\"Eventos totales: {n_events:,}\")\n",
+    "print(f\"Usuarios únicos: {n_users:,}\")\n",
+    "\n",
+    "# Rango temporal (mín, máx)\n",
+    "min_date = logs['date'].min()\n",
+    "max_date = logs['date'].max()\n",
+    "print(\"Fechas del dataset:\", min_date, \"->\", max_date)\n",
+    "\n",
+    "# Conteo diario (muéstralo resumido)\n",
+    "daily = logs.groupby('date').size().reset_index(name='count')\n",
+    "display(daily.head(8))\n",
+    "print(\"...\")\n",
+    "display(daily.tail(8))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Cutoff sugerido: 1970-01-01\n",
+      "Filas antes: 244126 después del corte: 244126\n",
+      "Usuarios antes: 7551 después: 7551\n"
+     ]
+    }
+   ],
+   "source": [
+    "threshold = daily['count'].mean() * 0.05\n",
+    "cutoff_date = daily.loc[daily['count'] >= threshold, 'date'].min()\n",
+    "print(\"Cutoff sugerido:\", cutoff_date)\n",
+    "\n",
+    "# Crear dataframe filtrado\n",
+    "logs_f = logs[logs['date'] >= cutoff_date].copy()\n",
+    "print(\"Filas antes:\", len(logs), \"después del corte:\", len(logs_f))\n",
+    "print(\"Usuarios antes:\", n_users, \"después:\", logs_f['user_id'].nunique())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<div class=\"alert alert-block alert-success\">\n",
+    "<b>Comentario del revisor</b> <a class=\"tocSkip\"></a>\n",
+    "\n",
+    "Excelente trabajo tanto graficando la distribución de los eventos como de tu decisión de hacer el filtrado de datos. Tal como dices, los datos antes del 1 de agosto del 2019 parecen estar incompletos, lo cual los hace muy poco útiles para el análisis de embudo e incluso podrían conducir a interpretaciones imprecisas.\n",
+    "</div>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Paso 4. Estudiar el embudo de eventos"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>count</th>\n",
+       "      <th>users</th>\n",
+       "      <th>share_users</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>MainScreenAppear</th>\n",
+       "      <td>119205</td>\n",
+       "      <td>7439</td>\n",
+       "      <td>0.985168</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>OffersScreenAppear</th>\n",
+       "      <td>46825</td>\n",
+       "      <td>4613</td>\n",
+       "      <td>0.610912</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>CartScreenAppear</th>\n",
+       "      <td>42731</td>\n",
+       "      <td>3749</td>\n",
+       "      <td>0.496491</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>PaymentScreenSuccessful</th>\n",
+       "      <td>34313</td>\n",
+       "      <td>3547</td>\n",
+       "      <td>0.469739</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Tutorial</th>\n",
+       "      <td>1052</td>\n",
+       "      <td>847</td>\n",
+       "      <td>0.112171</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                          count  users  share_users\n",
+       "MainScreenAppear         119205   7439     0.985168\n",
+       "OffersScreenAppear        46825   4613     0.610912\n",
+       "CartScreenAppear          42731   3749     0.496491\n",
+       "PaymentScreenSuccessful   34313   3547     0.469739\n",
+       "Tutorial                   1052    847     0.112171"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Escoge los eventos del embudo entre los anteriores.\n",
+      "['MainScreenAppear','OffersScreenAppear','CartScreenAppear','PaymentScreenSuccessful']\n"
+     ]
+    }
+   ],
+   "source": [
+    "df = logs_f if 'logs_f' in globals() else logs\n",
+    "\n",
+    "# Frecuencia de eventos y usuarios por evento\n",
+    "event_counts = df['event'].value_counts().head(30)\n",
+    "users_per_event = df.groupby('event')['user_id'].nunique().sort_values(ascending=False).head(30)\n",
+    "event_table = pd.concat([event_counts.rename('count'), users_per_event.rename('users')], axis=1)\n",
+    "event_table['share_users'] = event_table['users'] / df['user_id'].nunique()\n",
+    "display(event_table)\n",
+    "\n",
+    "\n",
+    "print(\"\\nEscoge los eventos del embudo entre los anteriores.\")\n",
+    "print(\"['MainScreenAppear','OffersScreenAppear','CartScreenAppear','PaymentScreenSuccessful']\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<div class=\"alert alert-block alert-success\">\n",
+    "<b>Comentario del revisor</b> <a class=\"tocSkip\"></a>\n",
+    "\n",
+    "Muy buenos cálculos! Tu análisis sobre las etapas es correcto y las cifras y porcentajes que generas son muy buenas para dar a entender cuáles son las etapas donde más se pierden usuarios y aquellas en las que mayor retención hay. Además lo complementes con una visualización para mostrar tus resultados, sobre todo el porcentaje de usuarios que avanzan a la siguiente etapa. Como bien sabes, las gráficas siempre aportan mucho a una comprensión más rápida e intuitiva de los resultados.\n",
+    "</div>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Paso 5. Estudiar los resultados del experimento"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Usuarios totales utilizados: 7551\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>event</th>\n",
+       "      <th>n_users</th>\n",
+       "      <th>pct_of_total</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>MainScreenAppear</td>\n",
+       "      <td>7439</td>\n",
+       "      <td>0.985168</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>OffersScreenAppear</td>\n",
+       "      <td>4613</td>\n",
+       "      <td>0.610912</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>CartScreenAppear</td>\n",
+       "      <td>3749</td>\n",
+       "      <td>0.496491</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PaymentScreenSuccessful</td>\n",
+       "      <td>3547</td>\n",
+       "      <td>0.469739</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                     event  n_users  pct_of_total\n",
+       "0         MainScreenAppear     7439      0.985168\n",
+       "1       OffersScreenAppear     4613      0.610912\n",
+       "2         CartScreenAppear     3749      0.496491\n",
+       "3  PaymentScreenSuccessful     3547      0.469739"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>from</th>\n",
+       "      <th>to</th>\n",
+       "      <th>conversion_rate</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>MainScreenAppear</td>\n",
+       "      <td>OffersScreenAppear</td>\n",
+       "      <td>0.605592</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>OffersScreenAppear</td>\n",
+       "      <td>CartScreenAppear</td>\n",
+       "      <td>0.799697</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>CartScreenAppear</td>\n",
+       "      <td>PaymentScreenSuccessful</td>\n",
+       "      <td>0.945052</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                 from                       to  conversion_rate\n",
+       "0    MainScreenAppear       OffersScreenAppear         0.605592\n",
+       "1  OffersScreenAppear         CartScreenAppear         0.799697\n",
+       "2    CartScreenAppear  PaymentScreenSuccessful         0.945052"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "\n",
+    "funnel = ['MainScreenAppear','OffersScreenAppear','CartScreenAppear','PaymentScreenSuccessful']\n",
+    "\n",
+    "df_total_users = df['user_id'].nunique()\n",
+    "print(\"Usuarios totales utilizados:\", df_total_users)\n",
+    "\n",
+    "stage_stats = []\n",
+    "for ev in funnel:\n",
+    "    u = df.loc[df['event']==ev, 'user_id'].nunique()\n",
+    "    stage_stats.append((ev, u, u/df_total_users))\n",
+    "\n",
+    "import pandas as pd\n",
+    "funnel_df = pd.DataFrame(stage_stats, columns=['event','n_users','pct_of_total'])\n",
+    "display(funnel_df)\n",
+    "\n",
+    "# Conversiones paso a paso:\n",
+    "rows = []\n",
+    "for i in range(len(funnel)-1):\n",
+    "    a = set(df.loc[df['event']==funnel[i],'user_id'])\n",
+    "    b = set(df.loc[df['event']==funnel[i+1],'user_id'])\n",
+    "    conv = len(a & b) / len(a) if len(a)>0 else np.nan\n",
+    "    rows.append({'from':funnel[i], 'to':funnel[i+1], 'conversion_rate':conv})\n",
+    "display(pd.DataFrame(rows))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Paso 6 — Preparar A/A/B y pruebas por evento "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Grupos presentes: [246, 247, 248]\n",
+      "Usuarios en múltiples grupos (se van a excluir): 0\n",
+      "Usuarios por grupo tras filtrar:\n",
+      "exp\n",
+      "246    2489\n",
+      "247    2520\n",
+      "248    2542\n",
+      "Name: user_id, dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(\"Grupos presentes:\", sorted(df['exp'].unique()))\n",
+    "\n",
+    "# Detectar usuarios que participaron en más de un grupo\n",
+    "user_group_counts = df.groupby('user_id')['exp'].nunique()\n",
+    "multi = user_group_counts[user_group_counts > 1].index\n",
+    "print(\"Usuarios en múltiples grupos (se van a excluir):\", len(multi))\n",
+    "\n",
+    "# Filtrar\n",
+    "df_clean = df[~df['user_id'].isin(multi)].copy()\n",
+    "print(\"Usuarios por grupo tras filtrar:\")\n",
+    "print(df_clean.groupby('exp')['user_id'].nunique())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "A/A (246 vs 247): {'event': 'PaymentScreenSuccessful', 'g1': 246, 'g2': 247, 'rate_g1': 0.4829248694254721, 'rate_g2': 0.4603174603174603, 'z': 1.602588827462412, 'p': 0.10902546202332887}\n",
+      "A vs B (246 vs 248): {'event': 'PaymentScreenSuccessful', 'g1': 246, 'g2': 248, 'rate_g1': 0.4829248694254721, 'rate_g2': 0.466168371361133, 'z': 1.1900184805141396, 'p': 0.23403912852637132}\n",
+      "A vs B (247 vs 248): {'event': 'PaymentScreenSuccessful', 'g1': 247, 'g2': 248, 'rate_g1': 0.4603174603174603, 'rate_g2': 0.466168371361133, 'z': -0.4174037691236318, 'p': 0.676383098446545}\n"
+     ]
+    }
+   ],
+   "source": [
+    "def compare_event_two_groups(data, event, g1, g2):\n",
+    "    totals = data.groupby('exp')['user_id'].nunique()\n",
+    "    users_with = data[data['event']==event].groupby('exp')['user_id'].nunique().reindex([g1,g2]).fillna(0)\n",
+    "    a_tot = totals.get(g1,0); b_tot = totals.get(g2,0)\n",
+    "    a_succ = int(users_with.get(g1,0)); b_succ = int(users_with.get(g2,0))\n",
+    "    if a_tot==0 or b_tot==0:\n",
+    "        return None\n",
+    "    z, p = proportions_ztest([a_succ, b_succ], [a_tot, b_tot])\n",
+    "    return {'event':event, 'g1':g1,'g2':g2,'rate_g1':a_succ/a_tot,'rate_g2':b_succ/b_tot,'z':z,'p':p}\n",
+    "\n",
+    "# Prueba A/A (246 vs 247) para el evento final\n",
+    "event_final = funnel[-1]  # PaymentScreenSuccessful (ajusta si es distinto)\n",
+    "res_aa_final = compare_event_two_groups(df_clean, event_final, 246, 247)\n",
+    "res_ab1_final = compare_event_two_groups(df_clean, event_final, 246, 248)\n",
+    "res_ab2_final = compare_event_two_groups(df_clean, event_final, 247, 248)\n",
+    "print(\"A/A (246 vs 247):\", res_aa_final)\n",
+    "print(\"A vs B (246 vs 248):\", res_ab1_final)\n",
+    "print(\"A vs B (247 vs 248):\", res_ab2_final)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>event</th>\n",
+       "      <th>g1</th>\n",
+       "      <th>g2</th>\n",
+       "      <th>rate_g1</th>\n",
+       "      <th>rate_g2</th>\n",
+       "      <th>z</th>\n",
+       "      <th>p</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PaymentScreenSuccessful</td>\n",
+       "      <td>246</td>\n",
+       "      <td>247</td>\n",
+       "      <td>0.482925</td>\n",
+       "      <td>0.460317</td>\n",
+       "      <td>1.602589</td>\n",
+       "      <td>0.109025</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>CartScreenAppear</td>\n",
+       "      <td>246</td>\n",
+       "      <td>247</td>\n",
+       "      <td>0.510245</td>\n",
+       "      <td>0.492063</td>\n",
+       "      <td>1.286767</td>\n",
+       "      <td>0.198175</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>OffersScreenAppear</td>\n",
+       "      <td>246</td>\n",
+       "      <td>247</td>\n",
+       "      <td>0.620731</td>\n",
+       "      <td>0.607143</td>\n",
+       "      <td>0.987653</td>\n",
+       "      <td>0.323323</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>MainScreenAppear</td>\n",
+       "      <td>246</td>\n",
+       "      <td>247</td>\n",
+       "      <td>0.986742</td>\n",
+       "      <td>0.984921</td>\n",
+       "      <td>0.545130</td>\n",
+       "      <td>0.585664</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>Tutorial</td>\n",
+       "      <td>246</td>\n",
+       "      <td>247</td>\n",
+       "      <td>0.112093</td>\n",
+       "      <td>0.113492</td>\n",
+       "      <td>-0.156477</td>\n",
+       "      <td>0.875657</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                     event   g1   g2   rate_g1   rate_g2         z         p\n",
+       "3  PaymentScreenSuccessful  246  247  0.482925  0.460317  1.602589  0.109025\n",
+       "2         CartScreenAppear  246  247  0.510245  0.492063  1.286767  0.198175\n",
+       "1       OffersScreenAppear  246  247  0.620731  0.607143  0.987653  0.323323\n",
+       "0         MainScreenAppear  246  247  0.986742  0.984921  0.545130  0.585664\n",
+       "4                 Tutorial  246  247  0.112093  0.113492 -0.156477  0.875657"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Bonferroni alpha: 0.01\n",
+      "Significativos sin corrección: 0\n",
+      "Significativos con Bonferroni: 0\n"
+     ]
+    }
+   ],
+   "source": [
+    "top_events = df['event'].value_counts().index[:30].tolist()  # top 30 events\n",
+    "results_aa = []\n",
+    "for ev in top_events:\n",
+    "    r = compare_event_two_groups(df_clean, ev, 246, 247)\n",
+    "    if r:\n",
+    "        results_aa.append(r)\n",
+    "aa_df = pd.DataFrame(results_aa).sort_values('p')\n",
+    "display(aa_df.head(10))\n",
+    "\n",
+    "# Bonferroni\n",
+    "alpha = 0.05\n",
+    "m = len(aa_df)\n",
+    "alpha_bonf = alpha / m\n",
+    "print(\"Bonferroni alpha:\", alpha_bonf)\n",
+    "print(\"Significativos sin corrección:\", (aa_df['p'] < alpha).sum())\n",
+    "print(\"Significativos con Bonferroni:\", (aa_df['p'] < alpha_bonf).sum())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<div class=\"alert alert-block alert-success\">\n",
+    "<b>Comentario del revisor</b> <a class=\"tocSkip\"></a>\n",
+    "\n",
+    "Tu análisis es un excelente ejemplo de cómo validar la correcta implementación de un experimento mediante pruebas A/A. Tu comparación entre los grupos de control (246 y 247) utilizando la prueba chi-cuadrado para múltiples eventos del embudo de conversión demuestra tu enfoque muy bien organizado. Además, los resultados muestran que no hay diferencias estadísticamente significativas entre los grupos de control para ninguno de los eventos analizados, lo cual es muy importante para garantizar la validez del experimento.\n",
+    "</div>"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.23"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
